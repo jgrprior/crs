@@ -15,28 +15,28 @@ import (
 
 var (
 	port            int
-	mongoUrl        string
-	defaultMongoUrl = os.Getenv("GOCAPTURE_MONGOURL")
+	mongoURL        string
+	defaultMongoURL = os.Getenv("GOCAPTURE_MONGOURL")
 )
 
 func init() {
 	const (
 		defaultPort          = 8888
 		usageDefaultPort     = "port to listen on"
-		usagedefaultMongoUrl = "MongoDb URL. Falls back to $GOCAPTURE_MONGOURL"
+		usagedefaultMongoURL = "MongoDb URL. Falls back to $GOCAPTURE_MONGOURL"
 	)
 	flag.IntVar(&port, "port", defaultPort, usageDefaultPort)
-	flag.StringVar(&mongoUrl, "mongourl", defaultMongoUrl, usagedefaultMongoUrl)
+	flag.StringVar(&mongoURL, "mongourl", defaultMongoURL, usagedefaultMongoURL)
 }
 
 func main() {
 	flag.Parse()
 
-	if mongoUrl == "" {
-		mongoUrl = "localhost"
+	if mongoURL == "" {
+		mongoURL = "localhost"
 	}
 
-	session, err := mgo.Dial(mongoUrl)
+	session, err := mgo.Dial(mongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -55,10 +55,10 @@ func main() {
 			panic(saveErr)
 		}
 
-		resp := &capture.JsonResponse{http.StatusOK, e.PublicId}
+		resp := &capture.JSONResponse{http.StatusOK, e.PublicID}
 		w.Header().Set("Content-Type", "aplication/json")
 		w.WriteHeader(http.StatusOK)
-		s, _ := resp.JsonEncode()
+		s, _ := resp.JSONEncode()
 		io.WriteString(w, s)
 	})
 
@@ -67,7 +67,7 @@ func main() {
 		capture.PanicHandler(
 			capture.AuthHandler(
 				capture.PostHandler(
-					capture.ValidJsonHandler(handler)))))
+					capture.ValidJSONHandler(handler)))))
 	log.Printf("Listening on http://localhost:%d", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux))
 }

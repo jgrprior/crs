@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	authUser string = os.Getenv("GOCAPTURE_USER")
-	authPass string = os.Getenv("GOCAPTURE_PASS")
+	authUser = os.Getenv("GOCAPTURE_USER")
+	authPass = os.Getenv("GOCAPTURE_PASS")
 
 	// Load our JSON schema once.
 	schemaLoader = gojsonschema.NewStringLoader(schema)
@@ -45,7 +45,7 @@ func PanicHandler(next http.Handler) http.Handler {
 					err = errors.New("Unknown error")
 				}
 				// TODO: Email alert
-				JsonErrorResponse(w, err.Error(), http.StatusInternalServerError)
+				JSONErrorResponse(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}()
@@ -59,7 +59,7 @@ func PostHandler(next http.Handler) http.Handler {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log.Println("Require POST middleware")
 		if req.Method != "POST" {
-			JsonErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+			JSONErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		next.ServeHTTP(w, req)
@@ -75,24 +75,24 @@ func AuthHandler(next http.Handler) http.Handler {
 
 		s := strings.SplitN(req.Header.Get("Authorization"), " ", 2)
 		if len(s) != 2 || s[0] != "Basic" {
-			JsonErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
+			JSONErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		b, err := base64.StdEncoding.DecodeString(s[1])
 		if err != nil {
-			JsonErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
+			JSONErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		pair := strings.SplitN(string(b), ":", 2)
 		if len(pair) != 2 {
-			JsonErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
+			JSONErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		if pair[0] != authUser || pair[1] != authPass {
-			JsonErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
+			JSONErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
@@ -101,19 +101,19 @@ func AuthHandler(next http.Handler) http.Handler {
 	return handler
 }
 
-// ValidJsonHandler middleware rejects HTTP requests that don't contain a valid JSON body
-func ValidJsonHandler(next http.Handler) http.Handler {
+// ValidJSONHandler middleware rejects HTTP requests that don't contain a valid JSON body
+func ValidJSONHandler(next http.Handler) http.Handler {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log.Println("Validate JSON middleware")
 
 		if req.ContentLength == 0 {
-			JsonErrorResponse(w, "Bad request", http.StatusBadRequest)
+			JSONErrorResponse(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			JsonErrorResponse(w, "Bad request", http.StatusBadRequest)
+			JSONErrorResponse(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
@@ -125,7 +125,7 @@ func ValidJsonHandler(next http.Handler) http.Handler {
 		docLoader := gojsonschema.NewStringLoader(string(bodyCopy[:]))
 		result, err := gojsonschema.Validate(schemaLoader, docLoader)
 		if err != nil {
-			JsonErrorResponse(w, err.Error(), http.StatusBadRequest)
+			JSONErrorResponse(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -135,13 +135,13 @@ func ValidJsonHandler(next http.Handler) http.Handler {
 				errs = append(errs, err.Description())
 				log.Println(err)
 			}
-			JsonErrorResponses(w, errs, http.StatusBadRequest)
+			JSONErrorResponses(w, errs, http.StatusBadRequest)
 			return
 		}
 
 		entry, err := NewEntry(rdr2)
 		if err != nil {
-			JsonErrorResponse(w, err.Error(), http.StatusBadRequest)
+			JSONErrorResponse(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 

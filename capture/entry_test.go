@@ -16,7 +16,7 @@ func TestValidEntrant(t *testing.T) {
 
 	for _, e := range tests {
 		if got, _ := e.input.Valid(); got != e.want {
-			s, _ := JsonEncode(e.input)
+			s, _ := jsonEncode(e.input)
 			t.Errorf("Entrant%s did not validate as expected", s)
 		}
 	}
@@ -35,7 +35,7 @@ func TestValidPerms(t *testing.T) {
 
 	for _, tst := range tests {
 		if got, _ := tst.input.Valid(); got != tst.want {
-			s, _ := JsonEncode(tst.input)
+			s, _ := jsonEncode(tst.input)
 			t.Errorf("Perms%s did not validate as expected", s)
 		}
 	}

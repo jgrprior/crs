@@ -13,22 +13,23 @@ import (
 )
 
 const (
+	// PayloadContextKey is the HTTP request context key for marshalled JSON data.
 	PayloadContextKey = "JsonPayload"
-	DefaultDatabase   = "capture"
-	DefaultCollection = "entry"
+	defaultDatabase   = "capture"
+	defaultCollection = "entry"
 )
 
 var (
-	db         string = os.Getenv("GOCAPTURE_DB")
-	collection string = os.Getenv("GOCAPTURE_COLLECTION")
+	db          = os.Getenv("GOCAPTURE_DB")
+	collection  = os.Getenv("GOCAPTURE_COLLECTION")
 )
 
 func init() {
 	if db == "" {
-		db = DefaultDatabase
+		db = defaultDatabase
 	}
 	if collection == "" {
-		collection = DefaultCollection
+		collection = defaultCollection
 	}
 }
 
@@ -43,7 +44,7 @@ type Entry struct {
 	Permissions        Perms       `json:"permisions"`
 	Form               []EntryItem `json:"form,omitempty"`
 	Tags               []EntryItem `json:"tags,omitempty"`
-	PublicId           string      `json:"entryId,omitempty"`
+	PublicID           string      `json:"entryId,omitempty"`
 }
 
 // An Entrant contains name and contact information for a single individual who,
@@ -75,12 +76,13 @@ type EntryItem struct {
 	Value string `json:"value"`
 }
 
+// NewEntry initialises a new campaign Entry.
 func NewEntry(body io.ReadCloser) (Entry, error) {
 	decoder := json.NewDecoder(body)
 	var entry Entry
 	err := decoder.Decode(&entry)
 	if err == nil {
-		entry.PublicId = entryHash(&entry)
+		entry.PublicID = entryHash(&entry)
 	}
 	return entry, err
 }
@@ -100,7 +102,7 @@ func (e *Entry) Save(s *mgo.Session) error {
 	return c.Insert(e)
 }
 
-// IsValid validates Entry fields and fields of all nested structs. If the Entry
+// Valid validates Entry fields and fields of all nested structs. If the Entry
 // or any of it's nested structs is not valid, false and a slice of error
 // messages is returned.
 //
@@ -139,7 +141,7 @@ func (e *Entry) Valid() (bool, []string) {
 	return valid, msgs
 }
 
-// IsValid validates Entrant fields. If the Entrant struct is not valid, false
+// Valid validates Entrant fields. If the Entrant struct is not valid, false
 // and a slice of error messages is returned, otherwise true and an empty slice
 // of strings.
 func (e *Entrant) Valid() (bool, []string) {
@@ -147,7 +149,7 @@ func (e *Entrant) Valid() (bool, []string) {
 	return true, make([]string, 0)
 }
 
-// IsValid validates Perms fields. If the Perms struct is not valid, false
+// Valid validates Perms fields. If the Perms struct is not valid, false
 // and a slice of error messages is returned, otherwise true and an empty slice
 // of strings.
 func (p *Perms) Valid() (bool, []string) {
@@ -155,7 +157,7 @@ func (p *Perms) Valid() (bool, []string) {
 	return true, make([]string, 0)
 }
 
-// IsValid validates EntryItem fields. If the EntryItem struct is not valid,
+// Valid validates EntryItem fields. If the EntryItem struct is not valid,
 // false and a slice of error messages is returned, otherwise true and an empty
 // slice of strings.
 func (i *EntryItem) Valid() (bool, []string) {
@@ -164,7 +166,7 @@ func (i *EntryItem) Valid() (bool, []string) {
 }
 
 // TODO: Move to utils
-func JsonEncode(s interface{}) (string, error) {
+func jsonEncode(s interface{}) (string, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	err := encoder.Encode(s)

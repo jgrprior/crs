@@ -7,42 +7,46 @@ import (
 	"net/http"
 )
 
-type JsonError struct {
+// JSONError is used to construct simple JSON HTTP responses.
+type JSONError struct {
 	Status   int      `json:"status"`
 	Messages []string `json:"messages"`
 }
 
-func (e *JsonError) JsonEncode() (string, error) {
+// JSONEncode marshals HTTP response messages into JSON.
+func (e *JSONError) JSONEncode() (string, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	err := encoder.Encode(e)
 	return buffer.String(), err
 }
 
-// JsonErrorResponse writes message and status to an http.ResponseWriter
-func JsonErrorResponse(w http.ResponseWriter, msg string, stat int) {
-	e := JsonError{stat, []string{msg}}
-	s, _ := e.JsonEncode()
+// JSONErrorResponse writes message and status to an http.ResponseWriter
+func JSONErrorResponse(w http.ResponseWriter, msg string, stat int) {
+	e := JSONError{stat, []string{msg}}
+	s, _ := e.JSONEncode()
 	w.Header().Set("Content-Type", "aplication/json")
 	w.WriteHeader(stat)
 	io.WriteString(w, s)
 }
 
-// JsonErrorResponse writes message and status to an http.ResponseWriter
-func JsonErrorResponses(w http.ResponseWriter, msg []string, stat int) {
-	e := JsonError{stat, msg}
-	s, _ := e.JsonEncode()
+// JSONErrorResponses writes message and status to an http.ResponseWriter
+func JSONErrorResponses(w http.ResponseWriter, msg []string, stat int) {
+	e := JSONError{stat, msg}
+	s, _ := e.JSONEncode()
 	w.Header().Set("Content-Type", "aplication/json")
 	w.WriteHeader(stat)
 	io.WriteString(w, s)
 }
 
-type JsonResponse struct {
+// JSONResponse is used to construct simple JSON HTTP responses.
+type JSONResponse struct {
 	Status  int    `json:"status"`
-	EntryId string `json:"entryId"`
+	EntryID string `json:"entryId"`
 }
 
-func (r *JsonResponse) JsonEncode() (string, error) {
+// JSONEncode marshals HTTP response messages into JSON.
+func (r *JSONResponse) JSONEncode() (string, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	err := encoder.Encode(r)
