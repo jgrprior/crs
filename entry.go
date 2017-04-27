@@ -1,36 +1,35 @@
-package capture
+package crs
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
-	"os"
+	"strings"
 	"time"
-
-	"gopkg.in/mgo.v2"
 )
 
-const (
-	// PayloadContextKey is the HTTP request context key for marshalled JSON data.
-	PayloadContextKey = "JsonPayload"
-	defaultDatabase   = "capture"
-	defaultCollection = "entry"
-)
+type actionField string
 
-var (
-	db          = os.Getenv("GOCAPTURE_DB")
-	collection  = os.Getenv("GOCAPTURE_COLLECTION")
-)
-
-func init() {
-	if db == "" {
-		db = defaultDatabase
+func (af *actionField) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
 	}
-	if collection == "" {
-		collection = defaultCollection
+
+	switch strings.ToLower(s) {
+	default:
+		return fmt.Errorf("submitAction must be one of 'email' or 'store', found '%v'", s)
+	case "email":
+		*af = "email"
+	case "store":
+		*af = "store"
+	case "":
+		*af = ""
 	}
+
+	return nil
 }
 
 // An Entry encapsulates submitted entrant and contact permission data, plus
@@ -39,7 +38,7 @@ type Entry struct {
 	CampaignName       string      `json:"campaignName"`
 	CampaignVersion    string      `json:"campaignVersion"`
 	SessionFingerprint string      `json:"sessionFingerprint,omitempty"`
-	SubmitAction       string      `json:"submitAction"`
+	SubmitAction       actionField `json:"submitAction"`
 	Entrant            Entrant     `json:"entrant"`
 	Permissions        Perms       `json:"permisions"`
 	Form               []EntryItem `json:"form,omitempty"`
@@ -76,8 +75,8 @@ type EntryItem struct {
 	Value string `json:"value"`
 }
 
-// NewEntry initialises a new campaign Entry.
-func NewEntry(body io.ReadCloser) (Entry, error) {
+// NewEntry initialises a new campaign Entry given a request body.
+func NewEntry(body io.Reader) (Entry, error) {
 	decoder := json.NewDecoder(body)
 	var entry Entry
 	err := decoder.Decode(&entry)
@@ -94,14 +93,6 @@ func entryHash(e *Entry) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// Save commits an Entry to a MongoDb database, pre configured by `session`, and
-// returns the error, if any, from the mgo.Session call to Insert.
-func (e *Entry) Save(s *mgo.Session) error {
-	defer s.Close()
-	c := s.DB(db).C(collection)
-	return c.Insert(e)
-}
-
 // Valid validates Entry fields and fields of all nested structs. If the Entry
 // or any of it's nested structs is not valid, false and a slice of error
 // messages is returned.
@@ -109,10 +100,17 @@ func (e *Entry) Save(s *mgo.Session) error {
 // Entry validation accumulates all error messages from invalid nested structs
 // into a single slice of strings.
 func (e *Entry) Valid() (bool, []string) {
-	var (
-		valid bool
-		msgs  []string
-	)
+	valid := true
+	msgs := make([]string, 0)
+
+	if e.CampaignName == "" {
+		valid = false
+		msgs = append(msgs, "campaignName is required")
+	}
+	if e.CampaignVersion == "" {
+		valid = false
+		msgs = append(msgs, "campaignVersion is required")
+	}
 
 	if res, msg := e.Entrant.Valid(); res == false {
 		valid = false
@@ -145,8 +143,27 @@ func (e *Entry) Valid() (bool, []string) {
 // and a slice of error messages is returned, otherwise true and an empty slice
 // of strings.
 func (e *Entrant) Valid() (bool, []string) {
-	// TODO: implement
-	return true, make([]string, 0)
+	valid := true
+	msgs := make([]string, 0)
+
+	if e.Title == "" {
+		valid = false
+		msgs = append(msgs, "entrant.title is a required field")
+	}
+	if e.FirstName == "" {
+		valid = false
+		msgs = append(msgs, "entrant.firstName is a required field")
+	}
+	if e.LastName == "" {
+		valid = false
+		msgs = append(msgs, "entrant.lastName is a required field")
+	}
+	if e.EmailAddress == "" {
+		valid = false
+		msgs = append(msgs, "entrant.emailAddress is a required field")
+	}
+
+	return valid, msgs
 }
 
 // Valid validates Perms fields. If the Perms struct is not valid, false
@@ -161,14 +178,16 @@ func (p *Perms) Valid() (bool, []string) {
 // false and a slice of error messages is returned, otherwise true and an empty
 // slice of strings.
 func (i *EntryItem) Valid() (bool, []string) {
-	// TODO: implement
-	return true, make([]string, 0)
-}
+	valid := true
+	msgs := make([]string, 0)
 
-// TODO: Move to utils
-func jsonEncode(s interface{}) (string, error) {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	err := encoder.Encode(s)
-	return buffer.String(), err
+	if i.Key == "" {
+		valid = false
+		msgs = append(msgs, "form/tag.key is a required field")
+	}
+	if i.Value == "" {
+		valid = false
+		msgs = append(msgs, "form/tag.value is a required field")
+	}
+	return valid, msgs
 }
