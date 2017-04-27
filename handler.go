@@ -14,6 +14,7 @@ func NewHandler(db Persister, usr string, pass string) http.Handler {
 			return
 		}
 
+		defer r.Body.Close()
 		entry, err := NewEntry(r.Body)
 		if err != nil {
 			JSONErrorResponse(w, err.Error(), http.StatusBadRequest)
@@ -38,5 +39,6 @@ func NewHandler(db Persister, usr string, pass string) http.Handler {
 		io.WriteString(w, s)
 	})
 
+	// TODO: Check content-type
 	return WithRecover(WithAuth(usr, pass, WithPost(handler)))
 }
